@@ -1,13 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { getUserByTelegramId } from '../services/userService'
 import './Dashboard.css'
+
+const ITEMS_PER_PAGE = 10
 
 export default function Dashboard() {
   const [appUser, setAppUser] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [activePage, setActivePage] = useState('dashboard')
+
+  const [periodFilter, setPeriodFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
 
   const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user
 
@@ -53,6 +60,48 @@ export default function Dashboard() {
 
   const balance = income - expense
 
+  const filteredTransactions = useMemo(() => {
+    const now = new Date()
+
+    return transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.created_at)
+
+      if (periodFilter === 'today') {
+        return transactionDate.toDateString() === now.toDateString()
+      }
+
+      if (periodFilter === 'month') {
+        return (
+          transactionDate.getMonth() === now.getMonth() &&
+          transactionDate.getFullYear() === now.getFullYear()
+        )
+      }
+
+      if (periodFilter === 'custom') {
+        if (!dateFrom || !dateTo) return true
+
+        const from = new Date(`${dateFrom}T00:00:00`)
+        const to = new Date(`${dateTo}T23:59:59`)
+
+        return transactionDate >= from && transactionDate <= to
+      }
+
+      return true
+    })
+  }, [transactions, periodFilter, dateFrom, dateTo])
+
+  const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE)
+
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+
+  function changePeriodFilter(value) {
+    setPeriodFilter(value)
+    setCurrentPage(1)
+  }
+
   function getCurrencySymbol(currency) {
     const symbols = {
       UAH: '₴',
@@ -66,6 +115,14 @@ export default function Dashboard() {
 
   function formatMoney(value) {
     return `${Number(value).toFixed(2)} ₴`
+  }
+
+  function formatDate(date) {
+    return new Date(date).toLocaleDateString('uk-UA', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
   }
 
   function formatTransactionAmount(transaction) {
@@ -155,23 +212,131 @@ export default function Dashboard() {
 
             <section className="transaction-list">
               {transactions.slice(0, 6).map(transaction => (
-                <div className="transaction-card glass" key={transaction.id}>
-                  <div className="transaction-info">
-                    <strong>{transaction.category}</strong>
-                    <p>{transaction.original_text}</p>
-                  </div>
-
-                  <div className={transaction.type === 'income' ? 'amount positive' : 'amount negative'}>
-                    {formatTransactionAmount(transaction)}
-                  </div>
-                </div>
+                <TransactionCard
+                  key={transaction.id}
+                  transaction={transaction}
+                  formatTransactionAmount={formatTransactionAmount}
+                  formatDate={formatDate}
+                />
               ))}
             </section>
           </>
         )}
 
         {activePage === 'history' && (
-          <EmptyPage title="Операції" text="Тут буде повна історія операцій." />
+          <>
+            <header className="topbar">
+              <div>
+                <p className="eyebrow">HowMuch</p>
+                <h1>Операції</h1>
+              </div>
+            </header>
+
+            <section className="filters-card glass">
+              <div className="period-tabs">
+                <button
+                  className={periodFilter === 'today' ? 'active' : ''}
+                  onClick={() => changePeriodFilter('today')}
+                >
+                  Сьогодні
+                </button>
+
+                <button
+                  className={periodFilter === 'month' ? 'active' : ''}
+                  onClick={() => changePeriodFilter('month')}
+                >
+                  Місяць
+                </button>
+
+                <button
+                  className={periodFilter === 'all' ? 'active' : ''}
+                  onClick={() => changePeriodFilter('all')}
+                >
+                  Увесь час
+                </button>
+
+                <button
+                  className={periodFilter === 'custom' ? 'active' : ''}
+                  onClick={() => changePeriodFilter('custom')}
+                >
+                  Свій період
+                </button>
+              </div>
+
+              {periodFilter === 'custom' && (
+                <div className="date-filters">
+                  <label>
+                    Від
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={event => {
+                        setDateFrom(event.target.value)
+                        setCurrentPage(1)
+                      }}
+                    />
+                  </label>
+
+                  <label>
+                    До
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={event => {
+                        setDateTo(event.target.value)
+                        setCurrentPage(1)
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
+            </section>
+
+            <section className="section-header history-header">
+              <h3>Історія</h3>
+              <span>{filteredTransactions.length} операцій</span>
+            </section>
+
+            <section className="transaction-list">
+              {paginatedTransactions.length > 0 ? (
+                paginatedTransactions.map(transaction => (
+                  <TransactionCard
+                    key={transaction.id}
+                    transaction={transaction}
+                    formatTransactionAmount={formatTransactionAmount}
+                    formatDate={formatDate}
+                  />
+                ))
+              ) : (
+                <div className="empty-card glass">
+                  <h2>Операцій немає</h2>
+                  <p>За вибраний період операції не знайдені.</p>
+                </div>
+              )}
+            </section>
+
+            {totalPages > 1 && (
+              <section className="pagination">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                >
+                  Назад
+                </button>
+
+                <span>
+                  {currentPage} / {totalPages}
+                </span>
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                >
+                  Далі
+                </button>
+              </section>
+            )}
+          </>
         )}
 
         {activePage === 'stats' && (
@@ -216,6 +381,22 @@ export default function Dashboard() {
           Налаштування
         </button>
       </nav>
+    </div>
+  )
+}
+
+function TransactionCard({ transaction, formatTransactionAmount, formatDate }) {
+  return (
+    <div className="transaction-card glass">
+      <div className="transaction-info">
+        <strong>{transaction.category}</strong>
+        <p>{transaction.original_text}</p>
+        <small>{formatDate(transaction.created_at)}</small>
+      </div>
+
+      <div className={transaction.type === 'income' ? 'amount positive' : 'amount negative'}>
+        {formatTransactionAmount(transaction)}
+      </div>
     </div>
   )
 }
