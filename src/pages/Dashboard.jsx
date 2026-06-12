@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { getUserByTelegramId } from '../services/userService'
+import './Dashboard.css'
 
 export default function Dashboard() {
   const [appUser, setAppUser] = useState(null)
@@ -34,9 +35,7 @@ export default function Dashboard() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error(error)
-    } else {
+    if (!error) {
       setTransactions(data || [])
     }
 
@@ -53,43 +52,75 @@ export default function Dashboard() {
 
   const balance = income - expense
 
+  function formatMoney(value) {
+    return `${Number(value).toFixed(2)} ₴`
+  }
+
+  function getSign(type) {
+    return type === 'income' ? '+' : '-'
+  }
+
   if (loading) {
-    return <div style={{ padding: 20 }}>Завантаження...</div>
+    return <div className="page">Завантаження...</div>
   }
 
   if (!telegramUser?.id) {
-    return <div style={{ padding: 20 }}>Не вдалося отримати дані Telegram</div>
+    return <div className="page">Не вдалося отримати дані Telegram</div>
   }
 
   if (!appUser) {
-    return <div style={{ padding: 20 }}>Користувача не знайдено в базі</div>
+    return <div className="page">Користувача не знайдено в базі</div>
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>💰 HowMuch</h1>
-
-      <p>Привіт, {telegramUser.first_name} 👋</p>
-
-      <h2>Баланс: {balance.toFixed(2)} ₴</h2>
-
-      <p>📈 Доходи: {income.toFixed(2)} ₴</p>
-      <p>📉 Витрати: {expense.toFixed(2)} ₴</p>
-
-      <h3>Останні операції</h3>
-
-      {transactions.length === 0 && <p>Операцій поки немає</p>}
-
-      {transactions.slice(0, 10).map(transaction => (
-        <div key={transaction.id} style={{ marginBottom: 12 }}>
-          <strong>
-            {transaction.type === 'income' ? '+' : '-'}
-            {Number(transaction.amount).toFixed(2)} {transaction.currency}
-          </strong>
-          <div>{transaction.category}</div>
-          <small>{transaction.original_text}</small>
+    <div className="page">
+      <header className="header">
+        <div>
+          <h1>💰 HowMuch</h1>
+          <p>Привіт, {telegramUser.first_name} 👋</p>
         </div>
-      ))}
+      </header>
+
+      <section className="balance-card">
+        <p>Поточний баланс</p>
+        <h2>{formatMoney(balance)}</h2>
+      </section>
+
+      <section className="stats-grid">
+        <div className="stat-card">
+          <span>📈 Доходи</span>
+          <strong>{formatMoney(income)}</strong>
+        </div>
+
+        <div className="stat-card">
+          <span>📉 Витрати</span>
+          <strong>{formatMoney(expense)}</strong>
+        </div>
+      </section>
+
+      <section className="section">
+        <h3>Останні операції</h3>
+
+        {transactions.length === 0 && (
+          <p className="empty">Операцій поки немає</p>
+        )}
+
+        <div className="transaction-list">
+          {transactions.slice(0, 10).map(transaction => (
+            <div className="transaction-card" key={transaction.id}>
+              <div>
+                <strong>{transaction.category}</strong>
+                <p>{transaction.original_text}</p>
+              </div>
+
+              <span className={transaction.type === 'income' ? 'amount income' : 'amount expense'}>
+                {getSign(transaction.type)}
+                {Number(transaction.amount_uah || 0).toFixed(2)} ₴
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
