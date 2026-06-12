@@ -113,14 +113,38 @@ export default function Dashboard() {
                 <p>{transaction.original_text}</p>
               </div>
 
-              <span className={transaction.type === 'income' ? 'amount income' : 'amount expense'}>
-                {getSign(transaction.type)}
-                {Number(transaction.amount_uah || 0).toFixed(2)} ₴
-              </span>
+              <div className={transaction.type === 'income' ? 'amount income' : 'amount expense'}>
+                {formatTransactionAmount(transaction)}
+              </div>
             </div>
           ))}
         </div>
       </section>
     </div>
+  )
+}
+
+function formatTransactionAmount(transaction) {
+  const sign = transaction.type === 'income' ? '+' : '-'
+  const amount = Number(transaction.amount || 0).toFixed(2)
+  const amountUah = Number(transaction.amount_uah || 0).toFixed(2)
+
+  if (transaction.currency !== 'UAH') {
+    return (
+      <>
+        <span>
+          {sign}{amount} {transaction.currency}
+        </span>
+        <small className="amount-uah">
+          ≈ {sign}{amountUah} ₴
+        </small>
+      </>
+    )
+  }
+
+  return (
+    <span>
+      {sign}{amountUah} ₴
+    </span>
   )
 }
