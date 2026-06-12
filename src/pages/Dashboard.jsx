@@ -124,17 +124,32 @@ export default function Dashboard() {
   )
 }
 
+function getCurrencySymbol(currency) {
+  const symbols = {
+    UAH: '₴',
+    USD: '$',
+    EUR: '€',
+    PLN: 'zł',
+  }
+
+  return symbols[currency] || currency
+}
+
 function formatTransactionAmount(transaction) {
   const sign = transaction.type === 'income' ? '+' : '-'
+
   const amount = Number(transaction.amount || 0).toFixed(2)
   const amountUah = Number(transaction.amount_uah || 0).toFixed(2)
+
+  const symbol = getCurrencySymbol(transaction.currency)
 
   if (transaction.currency !== 'UAH') {
     return (
       <>
         <span>
-          {sign}{amount} {transaction.currency}
+          {sign}{amount} {symbol}
         </span>
+
         <small className="amount-uah">
           ≈ {sign}{amountUah} ₴
         </small>
