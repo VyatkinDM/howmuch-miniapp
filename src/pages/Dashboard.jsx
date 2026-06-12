@@ -158,8 +158,13 @@ function formatTransactionAmount(transaction) {
   }
 
   return (
-    <span>
-      {sign}{amountUah} ₴
-    </span>
+    <>
+      <span>
+        {sign}{amountUah} ₴
+      </span>
+  
+      <small className="amount-uah amount-placeholder">
+        &nbsp;
+      </small>
+    </>
   )
-}
