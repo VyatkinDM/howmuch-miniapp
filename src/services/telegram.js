@@ -1,5 +1,3 @@
-import WebApp from '@twa-dev/sdk'
-
-WebApp.ready()
+const WebApp = window.Telegram?.WebApp || {}
 
 export default WebApp
