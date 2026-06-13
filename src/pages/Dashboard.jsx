@@ -80,10 +80,8 @@ export default function Dashboard() {
       if (periodFilter === 'custom') {
         if (!dateFrom || !dateTo) return true
 
-        const from = parseDateInput(dateFrom)
-        const to = parseDateInput(dateTo, true)
-
-        if (!from || !to) return true
+        const from = new Date(`${dateFrom}T00:00:00`)
+        const to = new Date(`${dateTo}T23:59:59`)
 
         return transactionDate >= from && transactionDate <= to
       }
@@ -127,18 +125,6 @@ export default function Dashboard() {
       hour: '2-digit',
       minute: '2-digit',
     }).replace(',', ' •')
-  }
-  
-  function parseDateInput(value, endOfDay = false) {
-    const [day, month, year] = value.split('.')
-  
-    if (!day || !month || !year) return null
-  
-    const hours = endOfDay ? 23 : 0
-    const minutes = endOfDay ? 59 : 0
-    const seconds = endOfDay ? 59 : 0
-  
-    return new Date(Number(year), Number(month) - 1, Number(day), hours, minutes, seconds)
   }
 
   function formatTransactionAmount(transaction) {
@@ -284,23 +270,19 @@ export default function Dashboard() {
                   <label>
                     Від
                     <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="13.06.2026"
+                      type="date"
                       value={dateFrom}
                       onChange={event => {
-                      setDateFrom(event.target.value)
-                      setCurrentPage(1)
-                    }}
-                  />
+                        setDateFrom(event.target.value)
+                        setCurrentPage(1)
+                      }}
+                    />
                   </label>
 
                   <label>
                     До
                     <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="13.06.2026"
+                      type="date"
                       value={dateTo}
                       onChange={event => {
                         setDateTo(event.target.value)
